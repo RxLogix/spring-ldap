@@ -30,6 +30,7 @@ import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.ldap.LimitExceededException;
 import org.springframework.ldap.NameNotFoundException;
 import org.springframework.ldap.PartialResultException;
+import org.springframework.ldap.AuthenticationException;
 import org.springframework.ldap.UncategorizedLdapException;
 import org.springframework.ldap.filter.EqualsFilter;
 import org.springframework.ldap.filter.Filter;
@@ -1830,6 +1831,28 @@ public class LdapTemplateTest {
         verify(dirContextMock).close();
 
         assertThat(result).isFalse();
+	}
+
+	// CVE-2026-41720 (gh-407)
+	@Test
+	public void testAuthenticateWhenPasswordIsEmptyAndDefaultStrategyThenReturnsFalse() throws Exception {
+		when(contextSourceMock.getReadOnlyContext()).thenReturn(dirContextMock);
+
+		Object expectedObject = new DirContextAdapter(new BasicAttributes(), LdapUtils.newLdapName("cn=john doe"),
+				LdapUtils.newLdapName("dc=jayway, dc=se"));
+		SearchResult searchResult = new SearchResult("", expectedObject, new BasicAttributes());
+
+		singleSearchResult(searchControlsRecursive(), searchResult);
+
+		when(contextSourceMock.getContext("cn=john doe,dc=jayway,dc=se", ""))
+				.thenThrow(new AuthenticationException(
+						new javax.naming.AuthenticationException("password must be provided when userDn is set")));
+
+		boolean result = tested.authenticate(nameMock, "(ou=somevalue)", "", entryContextCallbackMock);
+
+		verify(dirContextMock).close();
+
+		assertThat(result).isFalse();
 	}
 
     @Test
