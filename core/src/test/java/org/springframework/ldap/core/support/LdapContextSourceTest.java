@@ -18,6 +18,7 @@ package org.springframework.ldap.core.support;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.ldap.AuthenticationException;
 import org.springframework.ldap.support.LdapUtils;
 
 import javax.naming.Context;
@@ -25,6 +26,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * Unit tests for the LdapContextSource class.
@@ -171,5 +173,27 @@ public class LdapContextSourceTest {
 		tested.setUrl("ldap://ldap2.example.com:389");
 		env = tested.getAnonymousEnv();
 		assertThat(env.get(Context.PROVIDER_URL)).isEqualTo("ldap://ldap2.example.com:389/dc=example,dc=se");
+	}
+
+	// CVE-2026-41720
+	@Test
+	public void getContextWhenUserDnIsSetAndPasswordIsEmptyThenAuthenticationException() {
+		tested.setUrl("ldap://ldap.example.com:389");
+		tested.setUserDn("cn=service");
+		tested.setPassword("secret");
+		tested.afterPropertiesSet();
+		assertThatExceptionOfType(AuthenticationException.class)
+			.isThrownBy(() -> tested.getContext("cn=admin", ""));
+	}
+
+	// CVE-2026-41720
+	@Test
+	public void getContextWhenUserDnIsSetAndPasswordIsNullThenAuthenticationException() {
+		tested.setUrl("ldap://ldap.example.com:389");
+		tested.setUserDn("cn=service");
+		tested.setPassword("secret");
+		tested.afterPropertiesSet();
+		assertThatExceptionOfType(AuthenticationException.class)
+			.isThrownBy(() -> tested.getContext("cn=admin", null));
 	}
 }

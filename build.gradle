@@ -25,6 +25,22 @@ configure(subprojects - coreModules) {
 	tasks.findByPath("publishArtifacts")?.enabled = false
 }
 
+configure(subprojects) { subproject ->
+	apply plugin: 'maven-publish'
+	publishing {
+		repositories {
+			maven {
+				credentials {
+					username = System.getenv("NEXUS_USERNAME")
+					password = System.getenv("NEXUS_PASSWORD")
+				}
+				url = System.getenv("NEXUS_URL")
+				allowInsecureProtocol = System.getenv("NEXUS_ALLOW_INSECURE_PROTOCOL")
+			}
+		}
+	}
+}
+
 nohttp {
 	allowlistFile = project.file("etc/nohttp/allowlist.lines")
 	source.exclude "buildSrc/build/**"
